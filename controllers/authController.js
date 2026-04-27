@@ -116,9 +116,11 @@ export const loginUser = async (req, res) => {
     // 🔐 SET COOKIE
     res.cookie("token", token, {
       httpOnly: true,
-      secure: false, // true in https - false on localhost http
-      sameSite: "lax",
-      // maxAge: 7 * 24 * 60 * 60 * 1000,
+      // secure: false, // true in https - false on localhost http
+      // sameSite: "lax",
+      sameSite: "None",
+      secure: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     // 🔹 5. Send response
@@ -165,8 +167,10 @@ export const getMe = async (req, res) => {
 export const logoutUser = (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
-    secure: false,       // ⚠️ must match
-    sameSite: "lax"
+    // secure: false,       // ⚠️ must match
+    // sameSite: "lax"
+    sameSite: "None",
+    secure: true,
   });
 
   res.json({ success: true, message: 'Logged out successfully!' });
