@@ -111,6 +111,7 @@ const userSchema = new Schema(
 
         // Multi-tenancy
         organizationId: { type: Schema.Types.ObjectId, ref: "Organization" },
+        favoriteDoctors: [{ type: Schema.Types.ObjectId, ref: "users" }],
 
         // Security
         isVerified: { type: Boolean, default: false },

@@ -16,7 +16,7 @@ const app = express();
 // middleware
 // app.use(cors());
 app.use(cors({
-  origin: "http://localhost:5173", // your frontend
+  origin: ["http://localhost:5173", "https://frontend-medicare-seven.vercel.app"], // your frontend
   credentials: true
 }));
 app.use(express.json());

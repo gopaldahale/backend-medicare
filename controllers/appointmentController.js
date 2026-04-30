@@ -9,6 +9,7 @@ export const createAppointment = async (req, res) => {
             startTime,
             endTime,
             department,
+        type,
             reason,
         } = req.body;
 
@@ -52,6 +53,7 @@ export const createAppointment = async (req, res) => {
             startTime,
             endTime,
             department,
+            type,
             reason,
         });
 
@@ -69,9 +71,21 @@ export const createAppointment = async (req, res) => {
 // Get patient appointments
 export const getMyAppointments = async (req, res) => {
     try {
-        const appointments = await Appointment.find({
-            patient: req.user.id,
-        }).populate("doctor", "username email doctorInfo");
+        let query = {};
+        let populateField = "doctor";
+        let populateSelection = "username email doctorInfo";
+
+        if (req.user.role === "doctor") {
+            query = { doctor: req.user.id };
+            populateField = "patient";
+            populateSelection = "username email profile";
+        } else {
+            query = { patient: req.user.id };
+        }
+
+        const appointments = await Appointment.find(query)
+            .populate(populateField, populateSelection)
+            .sort({ date: 1, startTime: 1 });
 
         res.json(appointments);
         // console.log("REQ USER ID:", req.user.id);
@@ -131,5 +145,72 @@ export const updateAppointmentStatus = async (req, res) => {
         res.json({ message: "Status updated", appointment });
     } catch (err) {
         res.status(500).json({ message: "Server error" });
+    }
+};
+
+export const rescheduleAppointment = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { date, startTime, endTime } = req.body;
+
+        if (!date || !startTime || !endTime) {
+            return res.status(400).json({ message: "Date, start time and end time are required" });
+        }
+
+        const appointment = await Appointment.findById(id);
+        if (!appointment) {
+            return res.status(404).json({ message: "Appointment not found" });
+        }
+
+        if (
+            appointment.patient.toString() !== req.user.id &&
+            appointment.doctor.toString() !== req.user.id
+        ) {
+            return res.status(403).json({ message: "Not authorized" });
+        }
+
+        if (["completed", "cancelled", "no-show"].includes(appointment.status)) {
+            return res.status(400).json({ message: "This appointment cannot be rescheduled" });
+        }
+
+        const selectedDate = new Date(date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (selectedDate < today) {
+            return res.status(400).json({ message: "Cannot reschedule to a past date" });
+        }
+
+        appointment.date = selectedDate;
+        appointment.startTime = startTime;
+        appointment.endTime = endTime;
+        appointment.status = "pending";
+
+        await appointment.save();
+        res.json({ message: "Appointment rescheduled", appointment });
+    } catch (err) {
+        res.status(500).json({ message: err.message || "Server error" });
+    }
+};
+
+export const updateAppointmentNotes = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { notes } = req.body;
+
+        const appointment = await Appointment.findById(id);
+        if (!appointment) {
+            return res.status(404).json({ message: "Appointment not found" });
+        }
+
+        if (appointment.doctor.toString() !== req.user.id) {
+            return res.status(403).json({ message: "Only doctor can add notes" });
+        }
+
+        appointment.notes = (notes || "").trim();
+        await appointment.save();
+
+        res.json({ message: "Notes updated", appointment });
+    } catch (err) {
+        res.status(500).json({ message: err.message || "Server error" });
     }
 };
